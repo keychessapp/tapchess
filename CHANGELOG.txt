@@ -1,0 +1,3 @@
+TapChess changelog
+0.1.0 - First build: tap-to-move puzzles, 7 cycles (64,32,16,8,4,2,1 days), Home / Review / Stats / Settings,
+        3 themes, sound, offline (service worker). Puzzles file: keychess_puzzles.json (from select_puzzles.py).
