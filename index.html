@@ -26,10 +26,10 @@ button.big,.row2 button{background:var(--fg);color:var(--bg);border:0;border-rad
 table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:center;border-bottom:1px solid var(--card)}th{color:var(--mut);font-weight:400}
 .set{width:100%;display:flex;justify-content:space-between;align-items:center;padding:10px 0}.set button{background:var(--card);color:var(--fg);border:0;border-radius:10px;padding:8px 12px;margin-left:6px}.set .on{background:var(--fg);color:var(--bg)}
 .promo{position:fixed;inset:0;background:#000a;display:flex;align-items:center;justify-content:center;gap:8px}.promo img{width:72px;background:var(--l);border-radius:12px}
-.bad{color:#f66}
+.bad{color:#f66}.lv{display:flex;gap:2px;align-items:flex-end;height:20px}.lv i{width:4px;background:var(--fg);opacity:.2;border-radius:1px}.lv i.a{opacity:1}
 </style></head><body data-t="black"><main id="app"></main><nav id="nav"></nav>
 <script>
-const APP='TapChess',VER='0.1.0',DAYS=[64,32,16,8,4,2,1];
+const APP='TapChess',VER='0.1.1',DAYS=[64,32,16,8,4,2,1];
 // ==== ENGINE ====
 const F='abcdefgh',nm=i=>F[i&7]+(8-(i>>3)),ix=s=>(8-+s[1])*8+F.indexOf(s[0]),isW=p=>p===p.toUpperCase();
 const KN=[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]],KG=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]],DG=[[-1,-1],[-1,1],[1,-1],[1,1]],OR=[[-1,0],[1,0],[0,-1],[0,1]];
@@ -68,6 +68,7 @@ const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth
 const dayDiff=(a,b)=>Math.round((Date.parse(b+'T00:00:00Z')-Date.parse(a+'T00:00:00Z'))/864e5);
 const blank=()=>({st:'pending',start:'',end:'',qi:0,solved:[],clean:0,bad:[],review:[],ms:0,daily:{}});
 const daysLeft=(c,i)=>DAYS[i]-dayDiff(c.start,today());
+const lvl=r=>Math.min(7,Math.max(1,Math.floor((r-800)/200)+1));
 const need=(c,i,n)=>Math.ceil((n-c.solved.length+(c.daily[today()]||0))/Math.max(daysLeft(c,i),1));
 const acc=c=>c.clean+c.bad.length?Math.round(100*c.clean/(c.clean+c.bad.length))+'%':'-';
 // ==== /LOGIC ====
@@ -97,7 +98,7 @@ if(mode=='q')p=P[c.qi];else{const r=P.filter(x=>c.review.includes(x.id));p=r.fin
 if(!p)return view('home');const pos=parse(p.fen),m=find(pos,p.moves[0]),np=make(pos,m);
 G={p,mode,pos:np,ply:1,sel:-1,tg:[],last:[m.from,m.to],flip:np.turn=='b',bad:0,fin:0,lock:0,adv:0,flash:-1};
 $('#nav').style.display='none';const A=$('#app');
-A.innerHTML=`<div class="top"><button data-a="back">←</button><span id="ttl"></span><span class="pl ${G.flip?'b':'w'}">${G.flip?'B':'W'}</span></div><div id="mv"></div><div id="bd"></div><div id="msg">Your move</div><div class="row2"><button data-a="sol" id="sol">Show solution</button><button data-a="nx" id="nx">Next</button></div>`;
+A.innerHTML=`<div class="top"><button data-a="back">←</button><span id="ttl"></span><span class="lv">${[1,2,3,4,5,6,7].map(k=>`<i class="${k<=lvl(p.rating)?'a':''}" style="height:${6+k*2}px"></i>`).join('')}</span><span class="pl ${G.flip?'b':'w'}">${G.flip?'B':'W'}</span></div><div id="mv"></div><div id="bd"></div><div id="msg">Your move</div><div class="row2"><button data-a="sol" id="sol">Show solution</button><button data-a="nx" id="nx">Next</button></div>`;
 $('#ttl').textContent=(mode=='r'?'Review · '+p.theme+' · ':'')+'#'+p.n;snd('m');tOn();draw()}
 function draw(){const b=$('#bd');let h='';for(let r=0;r<8;r++)for(let c=0;c<8;c++){const i=G.flip?(7-r)*8+7-c:r*8+c,p=G.pos.b[i];h+=`<div class="sq ${(r+c)%2?'d':''} ${G.last.includes(i)?'lm':''} ${G.sel==i?'sel':''} ${G.flash==i?'bad':''}" data-i="${i}">${p?`<img src="pieces/${isW(p)?'w':'b'}${p.toUpperCase()}.svg">`:''}${G.tg.includes(i)?'<b class="dot"></b>':''}${c==0?`<s>${8-(i>>3)}</s>`:''}${r==7?`<u>${F[i&7]}</u>`:''}</div>`}
 b.innerHTML=h;$('#mv').textContent='Moves: '+Math.max(1,Math.ceil((G.p.moves.length-G.ply)/2));$('#sol').disabled=!(G.bad&&!G.fin);$('#nx').disabled=!(G.bad||G.fin)}
