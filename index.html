@@ -29,7 +29,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;text-align:cente
 .bad{color:#f66}.lv{display:flex;gap:2px;align-items:flex-end;height:20px}.lv i{width:4px;background:var(--fg);opacity:.2;border-radius:1px}.lv i.a{opacity:1}
 </style></head><body data-t="black"><main id="app"></main><nav id="nav"></nav>
 <script>
-const APP='TapChess',VER='0.1.1',DAYS=[64,32,16,8,4,2,1];
+const APP='TapChess',VER='0.1.2',DAYS=[64,32,16,8,4,2,1];
 // ==== ENGINE ====
 const F='abcdefgh',nm=i=>F[i&7]+(8-(i>>3)),ix=s=>(8-+s[1])*8+F.indexOf(s[0]),isW=p=>p===p.toUpperCase();
 const KN=[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]],KG=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]],DG=[[-1,-1],[-1,1],[1,-1],[1,1]],OR=[[-1,0],[1,0],[0,-1],[0,1]];
@@ -66,7 +66,7 @@ function find(pos,u){u=u.toLowerCase();const k=pos.b[ix(u.slice(0,2))];if(k&&k.t
 // ==== LOGIC ====
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const dayDiff=(a,b)=>Math.round((Date.parse(b+'T00:00:00Z')-Date.parse(a+'T00:00:00Z'))/864e5);
-const blank=()=>({st:'pending',start:'',end:'',qi:0,solved:[],clean:0,bad:[],review:[],ms:0,daily:{}});
+const blank=()=>({st:'pending',start:'',end:'',qi:0,solved:[],clean:0,bad:[],review:[],ms:0,daily:{},rc:{}});
 const daysLeft=(c,i)=>DAYS[i]-dayDiff(c.start,today());
 const lvl=r=>Math.min(7,Math.max(1,Math.floor((r-800)/200)+1));
 const need=(c,i,n)=>Math.ceil((n-c.solved.length+(c.daily[today()]||0))/Math.max(daysLeft(c,i),1));
@@ -88,7 +88,7 @@ if(v=='home'){h=`<div class="logo">${LOGO}<h1>${APP}</h1><p>Think Tap Take</p></
 if(!n)h+=`<div class="card"><p>keychess_puzzles.json not found.</p><input type="file" id="pf" accept=".json"></div>`;
 else if(i<0)h+=`<div class="card"><h2>All 7 cycles complete</h2></div>`;
 else{const c=S.cycles[i];if(c.st=='pending')h+=`<div class="card">${MSG?`<p class="bad">${MSG}</p>`:''}<h2>Cycle ${i+1} of 7</h2><p>${DAYS[i]} days · ${n} puzzles · ${Math.ceil(n/DAYS[i])} per day</p><button class="big" data-a="start">Start cycle ${i+1}</button></div>`;
-else{const l=n-c.solved.length,t=c.daily[today()]||0,q=need(c,i,n);h+=`<div class="card"><h2>Cycle ${i+1} of 7</h2><div class="row"><div><b>${daysLeft(c,i)}</b>days left</div><div><b>${l}</b>puzzles left</div></div><div class="bar"><i style="width:${100-l/n*100}%"></i></div><p>Today: ${t} / ${q}${t>=q?' ✓':''}</p><button class="big" data-a="play">${c.qi<n?'Play':'Review ('+c.review.length+')'}</button></div>`}}}
+else{const l=n-c.solved.length,t=c.daily[today()]||0,q=need(c,i,n);h+=`<div class="card"><h2>Cycle ${i+1} of 7</h2><div class="row"><div><b>${daysLeft(c,i)}</b>days left</div><div><b>${l||c.review.length}</b>${l?'puzzles left':'in review'}</div></div><div class="bar"><i style="width:${100-l/n*100}%"></i></div><p>Today: ${t} / ${q}${t>=q?' ✓':''}</p><button class="big" data-a="play">${c.qi<n?'Play':'Review ('+c.review.length+')'}</button></div>`}}}
 else if(v=='rev'){const c=i>=0?S.cycles[i]:null;h=`<div class="card"><h2>Review</h2><p>${c&&c.review.length?c.review.length+' puzzles to practice':'Nothing to review'}</p>${c&&c.review.length?'<button class="big" data-a="rplay">Practice</button>':''}</div>`}
 else if(v=='stats'){h='<table><tr><th>Cycle</th><th>Status</th><th>Days</th><th>Acc.</th><th>Time</th></tr>'+S.cycles.map((c,k)=>{const d=c.st=='done'?dayDiff(c.start,c.end)+1:c.st=='missed'?DAYS[k]:c.st=='active'?dayDiff(c.start,today())+1:'-',m=Math.round(c.ms/6e4);return`<tr><td>${k+1}</td><td>${c.st}</td><td>${d}</td><td>${acc(c)}</td><td>${c.ms?(m>=60?Math.floor(m/60)+'h ':'')+m%60+'m':'-'}</td></tr>`}).join('')+'</table>'}
 else h=`<div class="card"><div class="set">Theme<span>${['black','sepia','blue'].map(t=>`<button data-a="th" data-v="${t}" class="${S.theme==t?'on':''}">${t}</button>`).join('')}</span></div><div class="set">Sound<span><button data-a="snd" class="${S.sound?'on':''}">${S.sound?'on':'off'}</button></span></div><div class="set">Reset everything<span><button data-a="reset">Reset</button></span></div><p style="color:var(--mut)">${APP} v${VER}<br>Pieces: Chessnut (Apache 2.0). Puzzles: Lichess (CC0).</p></div>`;
@@ -99,17 +99,19 @@ if(!p)return view('home');const pos=parse(p.fen),m=find(pos,p.moves[0]),np=make(
 G={p,mode,pos:np,ply:1,sel:-1,tg:[],last:[m.from,m.to],flip:np.turn=='b',bad:0,fin:0,lock:0,adv:0,flash:-1};
 $('#nav').style.display='none';const A=$('#app');
 A.innerHTML=`<div class="top"><button data-a="back">←</button><span id="ttl"></span><span class="lv">${[1,2,3,4,5,6,7].map(k=>`<i class="${k<=lvl(p.rating)?'a':''}" style="height:${6+k*2}px"></i>`).join('')}</span><span class="pl ${G.flip?'b':'w'}">${G.flip?'B':'W'}</span></div><div id="mv"></div><div id="bd"></div><div id="msg">Your move</div><div class="row2"><button data-a="sol" id="sol">Show solution</button><button data-a="nx" id="nx">Next</button></div>`;
-$('#ttl').textContent=(mode=='r'?'Review · '+p.theme+' · ':'')+'#'+p.n;snd('m');tOn();draw()}
+$('#ttl').textContent=(mode=='r'?'Review · '+p.theme+' · ':'')+'#'+p.n+(mode=='r'?' · '+((c.rc||{})[p.id]||0)+'/3':'');snd('m');tOn();draw()}
 function draw(){const b=$('#bd');let h='';for(let r=0;r<8;r++)for(let c=0;c<8;c++){const i=G.flip?(7-r)*8+7-c:r*8+c,p=G.pos.b[i];h+=`<div class="sq ${(r+c)%2?'d':''} ${G.last.includes(i)?'lm':''} ${G.sel==i?'sel':''} ${G.flash==i?'bad':''}" data-i="${i}">${p?`<img src="pieces/${isW(p)?'w':'b'}${p.toUpperCase()}.svg">`:''}${G.tg.includes(i)?'<b class="dot"></b>':''}${c==0?`<s>${8-(i>>3)}</s>`:''}${r==7?`<u>${F[i&7]}</u>`:''}</div>`}
 b.innerHTML=h;$('#mv').textContent='Moves: '+Math.max(1,Math.ceil((G.p.moves.length-G.ply)/2));$('#sol').disabled=!(G.bad&&!G.fin);$('#nx').disabled=!(G.bad||G.fin)}
 const msg=t=>$('#msg').textContent=t;
 let t0=0;function tOn(){if(G&&!G.fin&&!G.shown&&!t0)t0=Date.now()}
 function tOff(){if(t0){const i=ci();if(i>=0)S.cycles[i].ms+=Date.now()-t0;t0=0;save()}}
 document.addEventListener('visibilitychange',()=>document.hidden?tOff():tOn());
-function mistake(){const c=S.cycles[ci()],id=G.p.id;if(G.bad)return;G.bad=1;if(!c.bad.includes(id))c.bad.push(id);if(!c.solved.includes(id)&&!c.review.includes(id))c.review.push(id);if(G.mode=='q'&&!G.adv){c.qi++;G.adv=1}save()}
+function mistake(){const c=S.cycles[ci()],id=G.p.id;if(G.bad)return;G.bad=1;c.rc=c.rc||{};if(!c.bad.includes(id))c.bad.push(id);if(!c.review.includes(id))c.review.push(id);c.rc[id]=0;if(G.mode=='q'&&!G.adv){c.qi++;G.adv=1}save()}
 function solved(){tOff();G.fin=1;const i=ci(),c=S.cycles[i],id=G.p.id;if(!c.solved.includes(id)){c.solved.push(id);if(!G.bad&&!c.bad.includes(id))c.clean++;c.daily[today()]=(c.daily[today()]||0)+1}
-c.review=c.review.filter(x=>x!=id);if(G.mode=='q'&&!G.adv){c.qi++;G.adv=1}
-if(c.solved.length>=P.length){c.st='done';c.end=today();c.review=[];msg(`Cycle ${i+1} complete! Accuracy ${acc(c)}`);$('#nx').textContent='Finish'}else msg(G.bad?'Solved':'Correct!');save();snd('ok');draw()}
+c.rc=c.rc||{};let t=G.bad?'Solved':'Correct!';
+if(c.review.includes(id)&&!G.bad){c.rc[id]=(c.rc[id]||0)+1;if(c.rc[id]>=3){c.review=c.review.filter(x=>x!=id);delete c.rc[id];t='Out of Review!'}else t=`Clean ${c.rc[id]}/3`}
+if(G.mode=='q'&&!G.adv){c.qi++;G.adv=1}
+if(c.solved.length>=P.length&&!c.review.length){c.st='done';c.end=today();msg(`Cycle ${i+1} complete! Accuracy ${acc(c)}`);$('#nx').textContent='Finish'}else msg(t);save();snd('ok');draw()}
 function reply(){G.lock=1;setTimeout(()=>{const m=find(G.pos,G.p.moves[G.ply]);G.pos=make(G.pos,m);G.last=[m.from,m.to];G.ply++;G.lock=0;snd('m');draw()},450)}
 function tapSq(i){if(!G||G.fin||G.lock||G.shown)return;const p=G.pos.b[i],mine=p&&isW(p)==(G.pos.turn=='w');
 if(G.sel>=0&&G.tg.includes(i)){const ms=legal(G.pos).filter(m=>m.from==G.sel&&m.to==i);if(ms.length>1)return promo(ms);return tryMove(ms[0])}
